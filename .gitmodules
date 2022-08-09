@@ -1,0 +1,9 @@
+[submodule "contrib/Catch2"]
+	path = contrib/Catch2
+	url = https://github.com/catchorg/Catch2
+[submodule "contrib/spdlog"]
+	path = contrib/spdlog
+	url = https://github.com/gabime/spdlog
+[submodule "contrib/fmt"]
+	path = contrib/fmt
+	url = https://github.com/fmtlib/fmt
