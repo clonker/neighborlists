@@ -43,7 +43,7 @@ TEST_CASE("CellLinkedListSanity", "[cell_linked_list]") {
         }, 8);
         auto end = std::chrono::high_resolution_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        spdlog::error("Elapsed for CLL {}ms", elapsed.count());
+        spdlog::error("Elapsed for CLL {}ms = {} * {}ms", elapsed.count(), 8, elapsed.count() / 8);
     }
 
     std::uint32_t referencePairs{};
@@ -58,7 +58,7 @@ TEST_CASE("CellLinkedListSanity", "[cell_linked_list]") {
         }
         auto end = std::chrono::high_resolution_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        spdlog::error("Elapsed for reference {}ms", elapsed.count());
+        spdlog::error("Elapsed for reference {}ms = {} * {}ms", elapsed.count(), 8, elapsed.count() / 8);
     }
 
     REQUIRE(pairs.load() == referencePairs);
