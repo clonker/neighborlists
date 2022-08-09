@@ -3,6 +3,8 @@ project(neighborlists LANGUAGES CXX VERSION 0.0.0)
 
 set(CMAKE_CXX_STANDARD 20)
 
+find_package(Threads REQUIRED)
+
 set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 set(SPDLOG_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(SPDLOG_BUILD_TESTING OFF CACHE BOOL "" FORCE)
@@ -14,7 +16,10 @@ add_subdirectory(contrib/fmt)
 add_definitions(-DSPDLOG_FMT_EXTERNAL)
 add_subdirectory(contrib/spdlog)
 
-add_subdirectory(neighborlists)
+add_library(neighborlists INTERFACE)
+target_include_directories(neighborlists INTERFACE include)
+add_library(neighborlists::neighborlists ALIAS neighborlists)
+target_link_libraries(neighborlists INTERFACE fmt spdlog Threads::Threads)
 
 add_subdirectory(contrib/Catch2)
 add_subdirectory(test)

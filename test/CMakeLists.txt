@@ -1,8 +1,2 @@
-find_package(Vulkan COMPONENTS glslang REQUIRED)
-
-#add_executable(neighborListUnitTests
-#	        ComputeShaderUnitTestContext.cpp ComputeShaderUnitTestContext.h ComputeShaderUnitTests.cpp
-#		)
-#	target_link_libraries(computeShaderUnitTests PUBLIC pbf_common Catch2::Catch2WithMain Vulkan::glslang)
-#	add_dependencies(computeShaderUnitTests shaders-target)
-
+add_executable(neighborListTests CellLinkedListTest.cpp)
+target_link_libraries(neighborListTests PUBLIC neighborlists::neighborlists Catch2::Catch2WithMain)
