@@ -8,7 +8,7 @@
 namespace neighborlists {
 
 namespace detail {
-template <typename T> concept arithmetic = std::is_arithmetic_v<T>;
+template<typename T> concept arithmetic = std::is_arithmetic_v<T>;
 }
 
 template<typename dtype, int DIM>
@@ -18,7 +18,7 @@ struct Vec {
     using value_type = typename data_type::value_type;
     using size_type = typename data_type::size_type;
     using reference = typename data_type::reference;
-    using const_reference = typename data_type::const_reference ;
+    using const_reference = typename data_type::const_reference;
     data_type data;
 
     reference operator[](size_type pos) {
@@ -41,37 +41,37 @@ struct Vec {
         return std::sqrt(normSquared());
     }
 
-    Vec& operator+=(const Vec &other) {
-        for(size_type i = 0; i < DIM; ++i) data[i] += other[i];
+    Vec &operator+=(const Vec &other) {
+        for (size_type i = 0; i < DIM; ++i) data[i] += other[i];
         return *this;
     }
 
     template<typename T>
-    Vec& operator+=(T arg) requires detail::arithmetic<T> {
-        for(size_type i = 0; i < DIM; ++i) data[i] += arg;
+    Vec &operator+=(T arg) requires detail::arithmetic<T> {
+        for (size_type i = 0; i < DIM; ++i) data[i] += arg;
         return *this;
     }
 
-    Vec& operator-=(const Vec &other) {
-        for(size_type i = 0; i < DIM; ++i) data[i] -= other[i];
-        return *this;
-    }
-
-    template<typename T>
-    Vec& operator-=(T arg) requires detail::arithmetic<T> {
-        for(size_type i = 0; i < DIM; ++i) data[i] -= arg;
+    Vec &operator-=(const Vec &other) {
+        for (size_type i = 0; i < DIM; ++i) data[i] -= other[i];
         return *this;
     }
 
     template<typename T>
-    Vec& operator*=(T arg) requires detail::arithmetic<T> {
-        for(size_type i = 0; i < DIM; ++i) data[i] *= arg;
+    Vec &operator-=(T arg) requires detail::arithmetic<T> {
+        for (size_type i = 0; i < DIM; ++i) data[i] -= arg;
         return *this;
     }
 
     template<typename T>
-    Vec& operator/=(T arg) requires detail::arithmetic<T> {
-        for(size_type i = 0; i < DIM; ++i) data[i] /= arg;
+    Vec &operator*=(T arg) requires detail::arithmetic<T> {
+        for (size_type i = 0; i < DIM; ++i) data[i] *= arg;
+        return *this;
+    }
+
+    template<typename T>
+    Vec &operator/=(T arg) requires detail::arithmetic<T> {
+        for (size_type i = 0; i < DIM; ++i) data[i] /= arg;
         return *this;
     }
 

@@ -22,7 +22,7 @@ struct CellAdjacency {
     bool withinBounds(const Index &index, const typename Index::GridDims &ijk) const {
         const bool nonNegative = std::all_of(begin(ijk), end(ijk), [](const auto &element) { return element >= 0; });
         bool nonExceeding = true;
-        for(std::size_t dim = 0; dim < Index::Dims; ++dim) {
+        for (std::size_t dim = 0; dim < Index::Dims; ++dim) {
             nonExceeding &= ijk[dim] < index[dim];
         }
         return nonNegative && nonExceeding;
@@ -31,13 +31,13 @@ struct CellAdjacency {
     void findEachAdjCell(const Index &index, const typename Index::GridDims &ijk, std::size_t dim, std::int32_t r,
                          std::vector<std::size_t> &adj) const {
         for (int ii = ijk[dim] - r; ii <= ijk[dim] + r; ++ii) {
-            typename Index::GridDims cix {ijk};
+            typename Index::GridDims cix{ijk};
             cix[dim] = ii;
-            if constexpr(periodic) {
+            if constexpr (periodic) {
                 cix[dim] = (cix[dim] % index[dim] + index[dim]) % index[dim];  // wrap around
             }
 
-            if(withinBounds(index, cix)) {
+            if (withinBounds(index, cix)) {
                 if (dim > 0) {
                     findEachAdjCell(index, cix, dim - 1, r, adj);
                 } else {
@@ -46,21 +46,25 @@ struct CellAdjacency {
             }
         }
     }
+
     CellAdjacency() = default;
+
     CellAdjacency(const Index &index, const std::int32_t radius) {
-        typename Index::GridDims nNeighbors {};
+        typename Index::GridDims nNeighbors{};
         for (std::size_t i = 0; i < Index::Dims; ++i) {
             nNeighbors[i] = std::min(index[i], static_cast<decltype(index[i])>(2 * radius + 1));
         }
         // number of neighbors plus the cell itself
         const auto nAdjacentCells = 1 + std::accumulate(begin(nNeighbors), end(nNeighbors), 1, std::multiplies<>());
         // number of neighbors plus cell itself plus padding to save how many neighbors actually
-        cellNeighbors = neighborlists::Index<2>{std::array<typename Index::value_type, 2>{index.size(), static_cast<typename Index::value_type>(1 + nAdjacentCells)}};
+        cellNeighbors = neighborlists::Index<2>{std::array<typename Index::value_type, 2>{index.size(),
+                                                                                          static_cast<typename Index::value_type>(
+                                                                                                  1 + nAdjacentCells)}};
         cellNeighborsContent.resize(cellNeighbors.size());
 
         std::vector<std::size_t> adj;
         adj.reserve(1 + nAdjacentCells);
-        for(std::size_t i = 0; i < index.size(); ++i) {
+        for (std::size_t i = 0; i < index.size(); ++i) {
             adj.resize(0);
             const auto ijk = index.inverse(i);
             findEachAdjCell(index, ijk, Index::Dims - 1, radius, adj);
@@ -73,11 +77,13 @@ struct CellAdjacency {
         }
     }
 
-    CellAdjacency(const CellAdjacency&) = delete;
-    CellAdjacency &operator=(const CellAdjacency&) = delete;
+    CellAdjacency(const CellAdjacency &) = delete;
 
-    CellAdjacency(CellAdjacency&&) noexcept = default;
-    CellAdjacency &operator=(CellAdjacency&&) noexcept = default;
+    CellAdjacency &operator=(const CellAdjacency &) = delete;
+
+    CellAdjacency(CellAdjacency &&) noexcept = default;
+
+    CellAdjacency &operator=(CellAdjacency &&) noexcept = default;
 
     ~CellAdjacency() = default;
 
@@ -94,16 +100,18 @@ struct CellAdjacency {
     }
 
     // index of size (n_cells x (1 + nAdjacentCells)), where the first element tells how many adj cells are stored
-    neighborlists::Index<2> cellNeighbors {};
+    neighborlists::Index<2> cellNeighbors{};
     // backing vector of _cellNeighbors index of size (n_cells x (1 + nAdjacentCells))
-    std::vector<std::size_t> cellNeighborsContent {};
+    std::vector<std::size_t> cellNeighborsContent{};
 };
 
 template<int DIM, bool periodic, typename dtype>
 class CellLinkedList {
 public:
     using Index = neighborlists::Index<DIM, std::array<std::int32_t, DIM>>;
-    CellLinkedList(std::array<dtype, DIM> gridSize, dtype interactionRadius, int nSubdivides = 2) : _gridSize(gridSize) {
+
+    CellLinkedList(std::array<dtype, DIM> gridSize, dtype interactionRadius, int nSubdivides = 2) : _gridSize(
+            gridSize) {
         std::array<typename Index::value_type, DIM> nCells;
         for (int i = 0; i < DIM; ++i) {
             _cellSize[i] = interactionRadius / nSubdivides;
@@ -118,11 +126,14 @@ public:
     }
 
     ~CellLinkedList() = default;
-    CellLinkedList(const CellLinkedList&) = delete;
-    CellLinkedList &operator=(const CellLinkedList&) = delete;
 
-    CellLinkedList(CellLinkedList&&) noexcept = default;
-    CellLinkedList &operator=(CellLinkedList&&) noexcept = default;
+    CellLinkedList(const CellLinkedList &) = delete;
+
+    CellLinkedList &operator=(const CellLinkedList &) = delete;
+
+    CellLinkedList(CellLinkedList &&) noexcept = default;
+
+    CellLinkedList &operator=(CellLinkedList &&) noexcept = default;
 
     template<std::random_access_iterator Iterator>
     void update(Iterator begin, Iterator end, std::uint32_t nJobs) {
@@ -177,7 +188,8 @@ public:
         typename Index::GridDims projections;
         for (auto i = 0U; i < DIM; ++i) {
             projections[i] = static_cast<typename Index::value_type>(
-                    std::max(static_cast<dtype>(0.), static_cast<dtype>(std::floor((pos[i] + .5 * _gridSize[i]) / _cellSize[i]))));
+                    std::max(static_cast<dtype>(0.),
+                             static_cast<dtype>(std::floor((pos[i] + .5 * _gridSize[i]) / _cellSize[i]))));
             projections[i] = std::clamp(projections[i], static_cast<typename Index::value_type>(0),
                                         static_cast<typename Index::value_type>(_index[i] - 1));
         }
@@ -196,7 +208,7 @@ public:
     template<typename F>
     void forEachParticlePair(F &&func, std::uint32_t nJobs) const {
         const auto worker = [this, func = std::forward<F>(func)](auto begin, auto end) {
-            for(auto i = begin; i != end; ++i) {
+            for (auto i = begin; i != end; ++i) {
                 forEachNeighborInCell(func, i);
             }
         };
@@ -209,7 +221,7 @@ public:
                 worker(begin, end);
             });
         }
-        if(grainStep * grainSize != nCellsTotal()) {
+        if (grainStep * grainSize != nCellsTotal()) {
             workers.emplace_back([&worker, begin = grainStep * grainSize, end = nCellsTotal()]() {
                 worker(begin, end);
             });
@@ -226,7 +238,7 @@ public:
                 const auto neighborCellId = *k;
                 auto neighborId = (*head.at(neighborCellId)).load();
                 while (neighborId != 0) {
-                    if(neighborId != particleId) {
+                    if (neighborId != particleId) {
                         func(particleId - 1, neighborId - 1);
                     }
                     neighborId = list.at(neighborId);
@@ -247,8 +259,8 @@ private:
     std::vector<CopyableAtomic<std::size_t>> head{};
     std::vector<std::size_t> list{};
     Index _index{};
-    CellAdjacency<Index, periodic> _adjacency {};
-    std::unordered_set<std::size_t> types {};
+    CellAdjacency<Index, periodic> _adjacency{};
+    std::unordered_set<std::size_t> types{};
 };
 
 }
