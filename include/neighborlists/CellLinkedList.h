@@ -15,10 +15,23 @@
 
 namespace neighborlists {
 
+/**
+ * Struct computing and storing the neighboring cells in a CLL.
+ *
+ * @tparam Index Type of index that is used in the CLL.
+ * @tparam periodic Whether periodic boundary conditions apply.
+ */
 template<typename Index, bool periodic>
 struct CellAdjacency {
     static_assert(std::is_signed_v<typename Index::value_type>, "Needs index to be signed!");
 
+    /**
+     * Check whether a multi-index ijk is within bounds of the index itself.
+     *
+     * @param index The index.
+     * @param ijk A multi index for which it is checked, whether it is still within bounds of index.
+     * @return true if none of the index dimensions are exceeded and none of the entries are negative, else false
+     */
     bool withinBounds(const Index &index, const typename Index::GridDims &ijk) const {
         const bool nonNegative = std::all_of(begin(ijk), end(ijk), [](const auto &element) { return element >= 0; });
         bool nonExceeding = true;
@@ -28,6 +41,16 @@ struct CellAdjacency {
         return nonNegative && nonExceeding;
     }
 
+    /**
+     * Finds adjacent cell indices given a current cell (specified by ijk) in a certain dimensional direction and
+     * stores those inside an adjacency vector.
+     *
+     * @param index The reference index, specifying the grid.
+     * @param ijk The current cell.
+     * @param dim Dimension axis to explore.
+     * @param r Number of subdivisions.
+     * @param adj Vector with adjacent cells.
+     */
     void findEachAdjCell(const Index &index, const typename Index::GridDims &ijk, std::size_t dim, std::int32_t r,
                          std::vector<std::size_t> &adj) const {
         for (int ii = ijk[dim] - r; ii <= ijk[dim] + r; ++ii) {
@@ -49,6 +72,12 @@ struct CellAdjacency {
 
     CellAdjacency() = default;
 
+    /**
+     * Creates and populates new cell adjacency struct.
+     *
+     * @param index The grid index object.
+     * @param radius Radius in which to check for neighbors (in terms of discrete steps around a reference cell).
+     */
     CellAdjacency(const Index &index, const std::int32_t radius) {
         typename Index::GridDims nNeighbors{};
         for (std::size_t i = 0; i < Index::Dims; ++i) {
@@ -87,14 +116,29 @@ struct CellAdjacency {
 
     ~CellAdjacency() = default;
 
+    /**
+     * The number of neighboring cells for specific (flat) cell index.
+     *
+     * @param cellIndex The cell index.
+     * @return Number of neighbors.
+     */
     [[nodiscard]] auto nNeighbors(auto cellIndex) const {
         return cellNeighborsContent[cellNeighbors(cellIndex, 0)];
     }
 
+    /**
+     * Random-access iterator denoting the begin of cell neighbors of cellIndex's cell.
+     *
+     * @param cellIndex The reference cell
+     * @return iterator with begin
+     */
     [[nodiscard]] auto cellsBegin(auto cellIndex) const {
         return begin(cellNeighborsContent) + cellNeighbors(cellIndex, 1);
     }
 
+    /**
+     * See cellsBegin.
+     */
     [[nodiscard]] auto cellsEnd(auto cellIndex) const {
         return cellsBegin(cellIndex) + nNeighbors(cellIndex);
     }
@@ -105,6 +149,13 @@ struct CellAdjacency {
     std::vector<std::size_t> cellNeighborsContent{};
 };
 
+/**
+ * A cell linked-list.
+ *
+ * @tparam DIM the dimension
+ * @tparam periodic whether periodic boundary conditions apply
+ * @tparam dtype the data type of positions (typically float/double)
+ */
 template<int DIM, bool periodic, typename dtype>
 class CellLinkedList {
 public:
