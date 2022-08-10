@@ -20,6 +20,7 @@ int main() {
     std::uint32_t nJobs{8};
 
     using Vec3 = neighborlists::Vec<double, 3>;
+    Vec3::value_type cutoff = 0.5;
     Vec3 boxSize{10., 10., 10.};
 
     std::size_t nParticles = 20000;
@@ -34,36 +35,61 @@ int main() {
         }
     }
 
-    std::atomic<std::uint32_t> pairs;
     {
-        neighborlists::CellLinkedList<Vec3::dim, false, Vec3::value_type> cll{boxSize.data, .5};
+        std::atomic<std::uint32_t> pairs;
+
+        neighborlists::CellLinkedList<Vec3::dim, false, Vec3::value_type> cll{boxSize.data, cutoff};
         auto start = std::chrono::high_resolution_clock::now();
         cll.update(begin(positions), end(positions), nJobs);
-        cll.forEachParticlePair([&positions, &pairs](auto i, auto j) {
-            if ((positions[i] - positions[j]).norm() < .5) {
+        cll.forEachParticlePair([&positions, &pairs, cutoff](auto i, auto j) {
+            if ((positions[i] - positions[j]).norm() < cutoff) {
                 ++pairs;
             }
         }, nJobs);
         auto end = std::chrono::high_resolution_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        spdlog::error("Elapsed for CLL {}ms = {} * {}ms", elapsed.count(), nJobs,
-                      elapsed.count() / static_cast<float>(nJobs));
+        spdlog::error("Elapsed for CLL {}ms = {} * {}ms ({} pairs)", elapsed.count(), nJobs,
+                      elapsed.count() / static_cast<float>(nJobs), pairs.load());
     }
 
-    std::uint32_t referencePairs{};
     {
+        std::uint32_t referencePairs{};
         auto start = std::chrono::high_resolution_clock::now();
         for (std::size_t i = 0; i < positions.size(); ++i) {
             for (std::size_t j = 0; j < positions.size(); ++j) {
-                if (i != j && (positions[i] - positions[j]).norm() < .5) {
+                if (i != j && (positions[i] - positions[j]).norm() < cutoff) {
                     ++referencePairs;
                 }
             }
         }
         auto end = std::chrono::high_resolution_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        spdlog::error("Elapsed for reference {}ms = {} * {}ms", elapsed.count(), nJobs,
-                      elapsed.count() / static_cast<float>(nJobs));
+        spdlog::error("Elapsed for reference {}ms = {} * {}ms ({} pairs)", elapsed.count(), nJobs,
+                      elapsed.count() / static_cast<float>(nJobs), referencePairs);
+    }
+
+    {
+        std::uint32_t referencePairs{};
+        auto start = std::chrono::high_resolution_clock::now();
+        #pragma omp parallel default(none) shared(positions, referencePairs) firstprivate(cutoff)
+        {
+            std::uint32_t referencePairsLocal {};
+            #pragma omp for collapse(2)
+            for (std::size_t i = 0; i < positions.size(); ++i) {
+                for (std::size_t j = 0; j < positions.size(); ++j) {
+                    if (i != j && (positions[i] - positions[j]).norm() < cutoff) {
+                        ++referencePairsLocal;
+                    }
+                }
+            }
+
+            #pragma omp critical
+            referencePairs += referencePairsLocal;
+        }
+        auto end = std::chrono::high_resolution_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        spdlog::error("Elapsed for openmp loop {}ms = {} * {}ms ({} pairs)", elapsed.count(), nJobs,
+                      elapsed.count() / static_cast<float>(nJobs), referencePairs);
     }
 
     return 0;
