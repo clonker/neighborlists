@@ -159,10 +159,23 @@ struct CellAdjacency {
 template<int DIM, bool periodic, typename dtype>
 class CellLinkedList {
 public:
+    /**
+     * Index type which is used to access cells as spatial (i, j, k,...) indices or flat (ravel/unravel).
+     */
     using Index = neighborlists::Index<DIM, std::array<std::int32_t, DIM>>;
 
-    CellLinkedList(std::array<dtype, DIM> gridSize, dtype interactionRadius, int nSubdivides = 2) : _gridSize(
-            gridSize) {
+    /**
+     * Creates a new CLL based on a grid size (which assumed to result in an origin-centered space), an interaction
+     * radius which is used to determine the amount of subdivision and a number of subdivides to further fine-grain
+     * the sphere approximation.
+     *
+     * @param gridSize array of dtype describing the extent of space
+     * @param interactionRadius maximum radius under which particles can interact
+     * @param nSubdivides amount of fine-graining
+     */
+    CellLinkedList(std::array<dtype, DIM> gridSize, dtype interactionRadius, int nSubdivides = 2)
+        : _gridSize(gridSize) {
+        // determine the number of cells per axis
         std::array<typename Index::value_type, DIM> nCells;
         for (int i = 0; i < DIM; ++i) {
             _cellSize[i] = interactionRadius / nSubdivides;
@@ -171,26 +184,39 @@ public:
             }
             nCells[i] = gridSize[i] / _cellSize[i];
         }
+        // create index for raveling and unravling operations
         _index = Index(nCells);
+        // initialize head to reflect the total number of cells
         head.resize(_index.size());
+        // compute adjacencies among cells and store in arrays
         _adjacency = CellAdjacency<Index, periodic>{_index, nSubdivides};
     }
 
     ~CellLinkedList() = default;
 
     CellLinkedList(const CellLinkedList &) = delete;
-
     CellLinkedList &operator=(const CellLinkedList &) = delete;
-
     CellLinkedList(CellLinkedList &&) noexcept = default;
-
     CellLinkedList &operator=(CellLinkedList &&) noexcept = default;
 
+    /**
+     * Clears the currently stored particle indices and (re)computes the cell linked-list structure.
+     *
+     * @tparam Iterator Type of random-access iterator.
+     * @param begin begin of the data structure containing vectors
+     * @param end end of the data structure containing vectors
+     * @param nJobs number of processes to use, threads are automatically joined
+     */
     template<std::random_access_iterator Iterator>
     void update(Iterator begin, Iterator end, std::uint32_t nJobs) {
+        // add artificial empty particle so that all entries can be unsigned
         list.resize(std::distance(begin, end) + 1);
+        // reset list
         std::fill(std::begin(list), std::end(list), 0);
+        // reset head
         std::fill(std::begin(head), std::end(head), CopyableAtomic<std::size_t>());
+
+        // operation which updates the cell linked-list by one individual particle based on its position
         const auto updateOp = [this](std::size_t particleId, const auto &pos) {
             const auto boxId = positionToCellIndex(&pos.data[0]);
 
@@ -201,6 +227,7 @@ public:
             list[particleId + 1] = currentHead;
         };
 
+        // depending on whether == 1 or nJobs > 1, either just iterate or use threads
         if (nJobs == 1) {
             std::size_t id = 0;
             for (std::random_access_iterator auto it = begin; it != end; ++it, ++id) {
@@ -234,6 +261,14 @@ public:
         }
     }
 
+    /**
+     * Determine a multidimensional cell index based on a position. This function is where the "space centered around
+     * origin" assumption enters.
+     *
+     * @tparam Position Type of position
+     * @param pos the position
+     * @return multidimensional index
+     */
     template<typename Position>
     typename Index::GridDims gridPos(const Position &pos) const {
         typename Index::GridDims projections;
@@ -247,22 +282,42 @@ public:
         return projections;
     }
 
+    /**
+     * Returns flat cell index based on position. See gridPos.
+     *
+     * @tparam Position Type of position.
+     * @param pos The position
+     * @return flat index pointing to a cell
+     */
     template<typename Position>
     std::uint32_t positionToCellIndex(const Position &pos) const {
         return _index.index(gridPos(pos));
     }
 
+    /**
+     * The number of cells in this cell linked-list
+     */
     auto nCellsTotal() const {
         return _index.size();
     }
 
+    /**
+     * Evaluate a functional on particle pairs which contain all particle pairs within the cutoff
+     * radius (but potentially more).
+     *
+     * @tparam F Functional type
+     * @param func The function reference, forwarded into worker lambda.
+     * @param nJobs Number of jobs.
+     */
     template<typename F>
     void forEachParticlePair(F &&func, std::uint32_t nJobs) const {
+        // worker function which applies the given function to all neighbors in all cells
         const auto worker = [this, func = std::forward<F>(func)](auto begin, auto end) {
             for (auto i = begin; i != end; ++i) {
                 forEachNeighborInCell(func, i);
             }
         };
+        // the worker threads, joined upon end of scope
         std::vector<std::jthread> workers;
 
         const auto grainSize = nCellsTotal() / nJobs;
@@ -279,6 +334,13 @@ public:
         }
     }
 
+    /**
+     * Applies a user-provided function to all particle pairs in and around a specific cell. Not parallelized.
+     *
+     * @tparam F The function type
+     * @param func The function universal reference
+     * @param cellIndex flat index of the cell
+     */
     template<typename F>
     void forEachNeighborInCell(F &&func, typename Index::value_type cellIndex) const {
         auto particleId = (*head.at(cellIndex)).load();
@@ -300,6 +362,9 @@ public:
         }
     }
 
+    /**
+     * Yields the extent of space.
+     */
     const std::array<dtype, DIM> &gridSize() const {
         return _gridSize;
     }
