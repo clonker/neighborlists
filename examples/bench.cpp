@@ -16,6 +16,7 @@ Generator randomlySeededGenerator() {
 }
 
 int main() {
+    spdlog::set_level(spdlog::level::debug);
 
     std::uint32_t nJobs{8};
 
@@ -48,7 +49,7 @@ int main() {
         }, nJobs);
         auto end = std::chrono::high_resolution_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        spdlog::error("Elapsed for CLL {}ms = {} * {}ms ({} pairs)", elapsed.count(), nJobs,
+        spdlog::debug("Elapsed for CLL {}ms = {} * {}ms ({} pairs)", elapsed.count(), nJobs,
                       elapsed.count() / static_cast<float>(nJobs), pairs.load());
     }
 
@@ -64,7 +65,7 @@ int main() {
         }
         auto end = std::chrono::high_resolution_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        spdlog::error("Elapsed for reference {}ms = {} * {}ms ({} pairs)", elapsed.count(), nJobs,
+        spdlog::debug("Elapsed for reference {}ms = {} * {}ms ({} pairs)", elapsed.count(), nJobs,
                       elapsed.count() / static_cast<float>(nJobs), referencePairs);
     }
 
@@ -88,7 +89,7 @@ int main() {
         }
         auto end = std::chrono::high_resolution_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        spdlog::error("Elapsed for openmp loop {}ms = {} * {}ms ({} pairs)", elapsed.count(), nJobs,
+        spdlog::debug("Elapsed for openmp loop {}ms = {} * {}ms ({} pairs)", elapsed.count(), nJobs,
                       elapsed.count() / static_cast<float>(nJobs), referencePairs);
     }
 
