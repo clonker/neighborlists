@@ -26,8 +26,8 @@ int main() {
     {
         auto generator = randomlySeededGenerator();
         for (std::size_t i = 0; i < nParticles; ++i) {
-            for (std::size_t d = 0; d < 3; ++d) {
-                std::uniform_real_distribution<float> dist{-5., 5.};
+            for (std::size_t d = 0; d < Vec3::dim; ++d) {
+                std::uniform_real_distribution<Vec3::value_type> dist{-5., 5.};
                 positions[i][d] = dist(generator);
             }
         }
@@ -35,7 +35,9 @@ int main() {
 
     std::atomic<std::uint32_t> pairs;
     {
-        neighborlists::CellLinkedList<3, false, double> cll{{10., 10., 10.}, .5};
+        std::array<Vec3::value_type, Vec3::dim> boxSize;
+        std::fill(begin(boxSize), end(boxSize), 10.);
+        neighborlists::CellLinkedList<Vec3::dim, false, Vec3::value_type> cll{boxSize, .5};
         auto start = std::chrono::high_resolution_clock::now();
         cll.update(begin(positions), end(positions), nJobs);
         cll.forEachParticlePair([&positions, &pairs](auto i, auto j) {
