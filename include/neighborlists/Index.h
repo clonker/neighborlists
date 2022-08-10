@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdint>
 #include <vector>
+#include <tuple>
 
 namespace neighborlists {
 

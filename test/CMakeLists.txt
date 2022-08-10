@@ -1,2 +1,2 @@
-add_executable(neighborListTests CellLinkedListTest.cpp)
+add_executable(neighborListTests CellLinkedListTest.cpp IndexTest.cpp)
 target_link_libraries(neighborListTests PUBLIC neighborlists::neighborlists Catch2::Catch2WithMain)
