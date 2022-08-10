@@ -1,11 +1,3 @@
-/**
- *
- *
- * @file CopyableAtomic.h
- * @brief 
- * @author clonker
- * @date 8/9/22
- */
 #pragma once
 
 #include <atomic>
