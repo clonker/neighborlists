@@ -23,6 +23,8 @@ target_include_directories(neighborlists INTERFACE include)
 add_library(neighborlists::neighborlists ALIAS neighborlists)
 target_link_libraries(neighborlists INTERFACE fmt-header-only spdlog::spdlog_header_only Threads::Threads)
 
+add_subdirectory(examples)
+
 add_subdirectory(contrib/Catch2)
 add_subdirectory(test)
 
