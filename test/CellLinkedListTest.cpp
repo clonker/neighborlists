@@ -4,62 +4,23 @@
 
 #include <neighborlists/Vec.h>
 #include <neighborlists/CellLinkedList.h>
-#include <random>
-#include "spdlog/spdlog.h"
 
-template<typename Generator = std::mt19937>
-Generator randomlySeededGenerator() {
-    std::random_device r;
-    std::random_device::result_type threadId = std::hash<std::thread::id>()(std::this_thread::get_id());
-    std::random_device::result_type clck = clock();
-    std::seed_seq seed{threadId, r(), r(), r(), clck, r(), r(), r(), r(), r()};
-    return Generator(seed);
-}
 
 TEST_CASE("CellLinkedListSanity", "[cell_linked_list]") {
-    using Vec3 = neighborlists::Vec<double, 3>;
+    using Vec1 = neighborlists::Vec<double, 1>;
+    neighborlists::CellLinkedList<Vec1::dim, false, double> cll{{10.}, 1.};
+    std::vector<Vec1> positions {
+            {{-4.5}}, {{-3.4}}, {{3.}}  // only particles 0 and 1 are neighbors of one another
+    };
+    cll.update(begin(positions), end(positions), 2);
 
-    std::size_t nParticles = 20000;
-    std::vector<Vec3> positions (nParticles);
-    {
-        auto generator = randomlySeededGenerator();
-        for (std::size_t i = 0; i < nParticles; ++i) {
-            for (std::size_t d = 0; d < 3; ++d) {
-                std::uniform_real_distribution<float> dist{-5., 5.};
-                positions[i][d] = dist(generator);
-            }
-        }
-    }
+    std::vector<std::tuple<int, int>> pairs {};
+    std::mutex m;
+    cll.forEachParticlePair([&pairs, &m](auto i, auto j) {
+        std::scoped_lock lock {m};
+        pairs.push_back(std::make_tuple(i, j));
+    }, 2);
 
-    std::atomic<std::uint32_t> pairs;
-    {
-        auto start = std::chrono::high_resolution_clock::now();
-        neighborlists::CellLinkedList<3, false, double> cll{{10., 10., 10.}, .5};
-        cll.update(begin(positions), end(positions), 8);
-        cll.forEachParticlePair([&positions, &pairs](auto i, auto j) {
-            if ((positions[i] - positions[j]).norm() < .5) {
-                ++pairs;
-            }
-        }, 8);
-        auto end = std::chrono::high_resolution_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        spdlog::error("Elapsed for CLL {}ms = {} * {}ms", elapsed.count(), 8, elapsed.count() / 8);
-    }
-
-    std::uint32_t referencePairs{};
-    {
-        auto start = std::chrono::high_resolution_clock::now();
-        for (std::size_t i = 0; i < positions.size(); ++i) {
-            for (std::size_t j = 0; j < positions.size(); ++j) {
-                if (i != j && (positions[i] - positions[j]).norm() < .5) {
-                    ++referencePairs;
-                }
-            }
-        }
-        auto end = std::chrono::high_resolution_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        spdlog::error("Elapsed for reference {}ms = {} * {}ms", elapsed.count(), 8, elapsed.count() / 8);
-    }
-
-    REQUIRE(pairs.load() == referencePairs);
+    REQUIRE(std::find(begin(pairs), end(pairs), std::make_tuple(0, 1)) != end(pairs));
+    REQUIRE(std::find(begin(pairs), end(pairs), std::make_tuple(1, 0)) != end(pairs));
 }
